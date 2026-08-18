@@ -5,7 +5,7 @@ CloudMic 中转服务器
 ===================
 单文件部署：既提供手机端网页（/），又负责手机 <-> 电脑端的 WebSocket 消息中转。
 
-部署（襄阳 61.184.23.165:23777）：
+部署（自备中转服务器）：
     pip3 install websockets -i https://mirrors.cloud.tencent.com/pypi/simple
     nohup python3 server.py --port 23777 > cloudmic.log 2>&1 &
 

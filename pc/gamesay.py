@@ -81,8 +81,8 @@ except Exception:
 APP_NAME = "云麦 CloudMic"
 APP_VERSION = "1.0.0"
 
-# 默认服务器（襄阳中转）与默认 TTS 音色
-DEFAULT_SERVER = "ws://61.184.23.165:23777"
+# 默认服务器（自备中转）与默认 TTS 音色
+DEFAULT_SERVER = "ws://YOUR_SERVER:23777"
 DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural"
 # 标准 v2/tts 在线语音合成接口（wss://tts-api.xfyun.cn/v2/tts）支持的常用音色：
 # 注意：xiaoguo（小果）/x2_* 是 AIUI 大模型平台音色，普通 TTS 接口里没有！
