@@ -47,7 +47,6 @@ cloudmic/
 │   ├── gamesay.py   主程序（四 TTS 引擎 + 内置密钥）
 │   ├── requirements.txt
 │   └── build.bat    打包 exe（纯 ASCII）
-├── tests/           可选测试脚本（讯飞/腾讯云/内置配置验证，含假 Qt 注入）
 ├── 使用说明.md      面向使用者的快速手册
 ├── 修改说明.md      ★面向 AI/开发者的维护文档（坑位 + 改法，接手先读）
 └── 部署教程.md      从零到上手的完整步骤
