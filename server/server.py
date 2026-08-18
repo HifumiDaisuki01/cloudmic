@@ -203,7 +203,7 @@ async def handle_conn(ws):
                     pc = room["pc"]
                     if pc is not None and ws_state_open(pc):
                         await pc.send(raw)
-                        # 回执给手机（用于聊天记录展示"已读给队友"）
+                        # 回执给手机（用于聊天记录展示"已读给对方"）
                         await ws.send(json.dumps({"type": "sayback", "text": obj.get("text", "")}, ensure_ascii=False))
                     else:
                         await ws.send(json.dumps({"type": "nopc"}, ensure_ascii=False))

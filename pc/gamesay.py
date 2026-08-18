@@ -2,11 +2,11 @@
 """
 云麦 CloudMic - 电脑端主程序
 ============================
-手机网页输入文字 -> 中转服务器 -> 本程序 -> TTS 合成 -> 播放到虚拟麦克风（VB-CABLE）-> 游戏麦
+手机网页输入文字 -> 中转服务器 -> 本程序 -> TTS 合成 -> 播放到虚拟麦克风（VB-CABLE）-> 软件/游戏语音
 
 功能：
   - 启动自动配对：显示二维码 + 4 位配对码，手机扫码或输码即连
-  - 收到文字自动朗读到虚拟麦克风（游戏内队友可听见）
+  - 收到文字自动朗读到虚拟麦克风（软件/游戏中的对方可听见）
   - TTS 引擎：edge-tts（自然，需联网）/ Windows SAPI（极速本地兜底）
   - 语速、音量可调；托盘常驻；断线自动重连
 
@@ -1006,7 +1006,7 @@ class Backend(QObject):
         }
         ok = await self.audio.speak(text, engine, voice, rate, volume, idx, xfyun=xfyun, tencent=tencent)
         if not ok and not self.audio.find_cable_device()[1]:
-            self._log("[提示] 未检测到虚拟麦克风 VB-CABLE，声音可能未进入游戏麦")
+            self._log("[提示] 未检测到虚拟麦克风 VB-CABLE，声音可能未送达软件/游戏中的对方")
 
 
 # ---------------------------------------------------------------------------
@@ -1431,7 +1431,7 @@ class MainWindow(QMainWindow):
 
     def _on_test(self):
         self._save_cfg()
-        self.backend.send_ui({"type": "test", "text": "你好，我是云麦，正在测试游戏麦克风。"})
+        self.backend.send_ui({"type": "test", "text": "你好，我是云麦，正在测试虚拟麦克风。"})
         self._on_log("[测试] 已发送测试指令")
 
     def _save_cfg(self):
@@ -1522,7 +1522,7 @@ class MainWindow(QMainWindow):
             return
         ret = QMessageBox.question(
             self, "检测到未安装虚拟麦克风",
-            "游戏里让队友听到声音需要 VB-CABLE 虚拟麦克风驱动。\n\n"
+            "要让软件/游戏里的对方听到你的声音，需要 VB-CABLE 虚拟麦克风驱动。\n\n"
             "已内置官方驱动包，一键静默安装（约 10 秒，弹一次系统权限确认）。\n\n"
             "现在安装吗？",
             QMessageBox.Yes | QMessageBox.No,
