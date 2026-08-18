@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.build-venv/
+
+# PyInstaller 构建产物
+build/
+dist/
+
+# 本地配置（含密钥，绝不上传）
+config.json
+
+# 测试/运行产生的临时文件
+*.log
+*.wav
+xf_test.wav
+
+# 系统文件
+Thumbs.db
+.DS_Store
