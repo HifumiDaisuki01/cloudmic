@@ -1,24 +1,28 @@
-# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
 .build-venv/
-
-# PyInstaller 构建产物
 build/
 dist/
-
-# 本地配置（含密钥，绝不上传）
+node_modules/
+.wrangler/
+.pytest_cache/
 config.json
-
-# 测试/运行产生的临时文件
+settings.json
+.env
+.env.*
 *.log
 *.wav
-xf_test.wav
-
-# 系统文件
+*.mp3
+desktop/licenses/
+third-party-sources/
+release-package/
+worker-build/
+windows-smoke.*
+CloudMic-*-windows-x64.zip
+third-party-sources.zip
+SHA256SUMS.txt
+exe-size-bytes.txt
 Thumbs.db
 .DS_Store
-pc/cloudmic_qr.png
-pc/cloudmic_qr.png

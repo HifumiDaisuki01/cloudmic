@@ -1,0 +1,112 @@
+name: Build and release CloudMic Next
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+        working-directory: worker
+      - run: npm test
+        working-directory: worker
+      - run: npx wrangler deploy --dry-run --outdir ../worker-build
+        working-directory: worker
+      - run: pip install aiohttp==3.13.0 websockets==15.0.1
+      - name: Local Durable Objects integration
+        run: |
+          cd worker
+          npx wrangler dev --port 8787 --ip 127.0.0.1 --local --show-interactive-dev-session=false > /tmp/cloudmic-wrangler.log 2>&1 &
+          cd ..
+          for i in $(seq 1 40); do curl -fsS http://127.0.0.1:8787/health && break || sleep 1; done
+          python scripts/check_relay.py
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: relay-debug
+          path: /tmp/cloudmic-wrangler.log
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: desktop/requirements*.txt
+      - run: python -m pip install -r desktop/requirements-dev.txt
+      - run: python -m pytest -q
+      - run: python scripts/collect_licenses.py
+      - name: Include corresponding LGPL sources and full GPL license
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force third-party-sources | Out-Null
+          python -m pip download --no-deps --no-binary :all: edge-tts==7.3.1 pystray==0.19.5 -d third-party-sources
+          Invoke-WebRequest https://www.gnu.org/licenses/gpl-3.0.txt -OutFile desktop/licenses/GPL-3.0.txt
+      - run: python -m PyInstaller --clean --noconfirm CloudMic.spec
+        working-directory: desktop
+      - name: Packaged EXE startup and UI smoke test
+        shell: pwsh
+        run: |
+          $report = Join-Path $PWD 'windows-smoke.json'
+          $process = Start-Process desktop/dist/CloudMic.exe -ArgumentList '--smoke-test', $report -PassThru
+          if (-not $process.WaitForExit(45000)) { $process.Kill(); throw 'EXE startup timeout' }
+          if (-not (Test-Path $report)) { throw 'EXE did not produce smoke-test report' }
+          $result = Get-Content $report -Raw | ConvertFrom-Json
+          if (-not $result.ok) { throw 'EXE smoke test failed' }
+          Get-Content $report
+      - name: Package portable release
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION).Trim()
+          New-Item -ItemType Directory -Force release-package | Out-Null
+          Copy-Item desktop/dist/CloudMic.exe,LICENSE,THIRD_PARTY_NOTICES.md,使用说明.md release-package/
+          Copy-Item desktop/licenses release-package/licenses -Recurse
+          Compress-Archive release-package/* "CloudMic-$version-windows-x64.zip"
+          Compress-Archive third-party-sources/* third-party-sources.zip
+          Get-FileHash "CloudMic-$version-windows-x64.zip",desktop/dist/CloudMic.exe,third-party-sources.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Set-Content SHA256SUMS.txt
+          (Get-Item desktop/dist/CloudMic.exe).Length | Set-Content exe-size-bytes.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudMic-windows-x64
+          path: |
+            CloudMic-*-windows-x64.zip
+            desktop/dist/CloudMic.exe
+            third-party-sources.zip
+            SHA256SUMS.txt
+            windows-smoke.json
+            windows-smoke.png
+            exe-size-bytes.txt
+  publish:
+    if: github.event_name == 'push' && contains(github.event.head_commit.message, 'release:')
+    needs: [relay, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudMic-windows-x64
+          path: artifacts
+      - name: Publish verified build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(cat VERSION)
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "CloudMic $VERSION · 完全重置的下一代" --notes-file docs/RELEASE_NOTES.md artifacts/CloudMic-*-windows-x64.zip artifacts/desktop/dist/CloudMic.exe artifacts/third-party-sources.zip artifacts/SHA256SUMS.txt artifacts/windows-smoke.json artifacts/windows-smoke.png

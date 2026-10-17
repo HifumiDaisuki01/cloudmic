@@ -1,142 +1,99 @@
-# 云麦 CloudMic · 无声者的声音
+# CloudMic Next · 云麦下一代
 
-**为听障与言语障碍（聋哑）人士设计的辅助交流软件。**
+**完全重置的 CloudMic 2.0。** 为言语障碍人士、需要文字发声的人，以及不方便开口的玩家提供更简单的交流方式。
 
-说不出话？没关系。在手机（网页）上打字，文字经中转服务器到达电脑端，合成语音后从虚拟麦克风"开口"——
-让你在**电脑软件、网络游戏**中，也能向对方发出自己的声音，实现实时、零障碍的交流。
+手机打字，电脑发声，让游戏和聊天软件里的对方听见你。
 
+[下载 Windows 版](https://github.com/HifumiDaisuki01/cloudmic/releases/latest) · [手机配对页](https://cloudmic-next.keran.workers.dev/) · [使用说明](使用说明.md) · [自行部署](部署教程.md)
+
+## 这是一次重建
+
+2.0 重新设计了桌面客户端、手机网页、配对协议、语音队列和云端中转。**不是旧版换皮，也不兼容 1.x 的配对服务器。**
+
+- **无需自备服务器**：手机网页与文字中转运行在 Cloudflare Workers / SQLite Durable Objects。
+- **独立 Windows EXE**：无需安装 Python、Qt、Node.js 或 FFmpeg。没有 Electron / WebView；使用轻量桌面 UI，开发依赖已经随成品打包。
+- **统一的新界面**：浅色桌面、清晰的音色与设备选择；手机适配窄屏与系统深色模式。
+- **扫码或 8 位码配对**：电脑与手机身份分离；新设备配对 10 分钟过期，房间最长 24 小时。刷新配对会撤销旧连接。
+- **明确的朗读状态**：电脑接收 → 排队 → 合成 → 播放 → 完成 / 失败，转发成功不再冒充朗读成功。
+- **声音不打架**：有界队列、重复消息抑制、停止并清空、超过 30 秒的排队消息自动跳过。断线不自动重发旧文字。
+- **自然语音与离线兜底**：默认在线神经语音；网络不可用时回退 Windows 本地语音，也可使用自备密钥的 Azure Speech。
+- **为延迟优化**：短句按句合成、内存音频缓存、独立网络与播放线程。界面显示电脑接收至开始播放的实际耗时。
+
+## 立即使用
+
+1. 从 Releases 下载 `CloudMic-2.0.0-windows-x64.zip`，解压后运行 `CloudMic.exe`。也可单独下载 EXE，许可证和使用说明在 ZIP 中更齐全。
+2. 先打开“扬声器试听”，点“试听 / 测试朗读”，确认声音正常。
+3. 手机扫描电脑二维码，或打开配对页输入电脑上的 **8 位码**。
+4. 输入文字或点击快捷短语，即可发声。手机与电脑可以在不同网络中。
+
+### 让游戏听见声音
+
+如果已有兼容虚拟音频设备，直接选中它。如果没有，需要**一次性安装虚拟音频驱动**：
+
+- 从 [VB-Audio 官方网站](https://vb-audio.com/Cable/) 获取 VB-CABLE，解压完整包，以管理员身份安装，按安装器提示重启。
+- 云麦输出选 **CABLE Input**；游戏或聊天软件的麦克风选 **CABLE Output**。
+- 关闭“扬声器试听”。按键说话、语音激活等仍需在游戏内设置。
+
+**应用不能凭空创建系统麦克风。** 单独试听不需要驱动；向游戏注入声音需要虚拟音频设备。VB-CABLE 是独立第三方 donationware，2.0 不再将驱动集成进安装流程，也不会静默提权安装。云电脑若禁止安装驱动，需要使用已有的兼容设备。
+
+## 语音与延迟
+
+| 模式 | 特点 | 条件 |
+|---|---|---|
+| 自然语音（默认） | 晓晓、云希等神经音色，免填写密钥；失败回退本地 | 需要访问在线语音服务；第三方接口无商业 SLA |
+| 仅在线自然语音 | 在线失败时直接报告，不切换声音 | 网络可用 |
+| 本地语音 | 不需要联网，响应通常更直接 | 音质和语言取决于 Windows 已安装的语音包 |
+| Azure Speech | 官方接口，使用个人订阅 | 在设置中填写区域和密钥；费用由你的订阅承担 |
+
+在线语音并非换一个 Worker 就能保证更快。网络、服务合成、文字长度与音频设备都会影响延迟；本项目**不承诺固定毫秒数或所有网络下的可达性**。界面的 `ms` 是电脑接收文字至开始播放的时间，不包含手机到电脑的传输，也不证明对方已听见。
+
+免费托管中转有平台配额，不保证持续可用；Cloudflare 在中国大陆的可达性需要在实际网络中验证。中转只传文字和状态，**不在 Worker 上运行语音模型，也不中转语音音频**。
+
+## 隐私与安全
+
+- 配对全程 HTTPS/WSS，身份凭据在 WebSocket 首条认证消息中传输，不放在 URL 查询参数。
+- 8 位码使用 32 字符字母表（40 bit），服务器保留碰撞检测；电脑与手机各自使用独立随机 256 bit 凭据。
+- IP 级创建 / 配对限速、连接数限制、认证超时、单条最多 500 字。
+- 中转不主动保存聊天正文；房间凭据的哈希及过期时间保存在 Durable Objects，过期删除。Cloudflare 仍处理请求元数据。
+- 默认在线朗读会把文字发送给 Microsoft 的语音服务；Azure 模式发送给你配置的 Azure 区域。本地模式不发送文字给语音服务。
+- 手机会话凭据放在 `sessionStorage`，快捷短语放在 `localStorage`；对话记录只保存在当前页面内存。
+- 桌面偏好保存在 `%LOCALAPPDATA%\CloudMicNext\settings.json`。Azure 密钥使用 Windows 凭据管理器，不写入仓库或普通 JSON。
+- 音频缓存只在进程内存；SAPI 的短暂 WAV 文件在合成后删除。关闭程序会清除内存缓存。
+
+## 项目结构与开发
+
+```text
+worker/                 Workers + Durable Objects + 无依赖手机网页
+  src/                  房间、认证、限速与转发
+  public/               HTML / CSS / JavaScript
+  test/                 协议单元测试
+desktop/
+  cloudmic/             UI、配置、传输、语音队列、音频输出
+  main.py               Windows 启动入口
+  requirements*.txt     固定的运行 / 构建依赖
+  CloudMic.spec         独立 EXE 打包配置
+tests/                  桌面队列与取消等回归测试
+scripts/                中转集成检查与许可证收集
+.github/workflows/      Windows 构建、EXE 启动检查与 Release 发布
 ```
-┌──────────┐  文字   ┌──────────────┐  文字   ┌──────────┐  TTS+播放  ┌────────────┐
-│  手机网页  │ ──────▶ │  中转服务器    │ ──────▶ │  电脑端    │ ────────▶ │ VB-CABLE  │─▶ 软件/游戏
-│ (扫码配对) │ ◀────── │ (中转服务器) │ ◀────── │ (CloudMic)│           │  虚拟麦克风 │   对方
-└──────────┘  回执   └──────────────┘  状态   └──────────┘           └────────────┘
-```
 
-## 🚀 立即体验
-
-我们提供了**仅供测试**的中转服务器，无需自建、打开即用：
-
-> **http://61.184.23.165:23777/** — 手机浏览器打开即可看到配对页，与电脑端配对后即可体验"手机打字 → 电脑发声"
-
-> ⚠️ 测试服务器**不保证连接速度与稳定性**，高峰期可能无法访问；正式使用建议按《部署教程》自建中转服务器（约 2 分钟）。
-
-## 📮 问题反馈
-
-使用中遇到任何问题，欢迎邮件反馈：**FAQ@keran.cc**
-
-## 特性
-
-
-| 项 | 说明 |
-|---|---|
-| 配对方式 | 电脑端显示**二维码 + 4 位配对码**，手机扫码或输码即连 |
-| 低延迟 | 国内中转 WebSocket 直传（约 20-50ms），传输远快于语音合成 |
-| TTS | 四引擎：edge-tts（自然女声/男声 8 种）/ 讯飞 TTS / 腾讯云 TTS（800万字符免费）/ 系统 SAPI 本地极速兜底；密钥在设置中填写，自用可内置 |
-| 虚拟麦 | **内置官方驱动包**：首次启动自动检测，一键静默安装 VB-CABLE（免手动下载）；软件/游戏里麦克风选 CABLE Output 即可 |
-| 多手机 | 一个电脑可同时配多台手机（家人朋友都能帮你发） |
-| 常驻 | 托盘运行、断线自动重连、设置持久化 |
-
-## 目录结构
-
-```
-cloudmic/
-├── server/          中转服务器（中转服务器 部署）
-│   ├── server.py    WebSocket 中转 + 手机网页，单进程
-│   └── index.html   手机端网页（与 server.py 同目录，改 UI 只需动它）
-├── pc/              电脑端（Windows）
-│   ├── gamesay.py   主程序（四 TTS 引擎 + 内置密钥）
-│   ├── requirements.txt
-│   └── build.bat    打包 exe（纯 ASCII）
-├── 使用说明.md      面向使用者的快速手册
-├── 修改说明.md      ★面向 AI/开发者的维护文档（坑位 + 改法，接手先读）
-└── 部署教程.md      从零到上手的完整步骤
-```
-
-## 快速开始（3 步）
-
-### 1. 部署中转服务器（一次性，中转服务器上执行）
+Windows 开发使用 Python 3.12，运行 `desktop/build.bat`。运行测试：
 
 ```bash
-cd cloudmic/server
-pip3 install websockets -i https://mirrors.cloud.tencent.com/pypi/simple
-# 用 systemd 托管：开机自启 + 崩溃自动拉起（推荐）
-cat > /etc/systemd/system/cloudmic.service <<'EOF'
-[Unit]
-Description=CloudMic Relay Server
-After=network.target
-
-[Service]
-WorkingDirectory=/opt/cloudmic
-ExecStart=/usr/bin/python3 /opt/cloudmic/server.py --port 23777
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl daemon-reload && systemctl enable --now cloudmic
-# 查看状态/日志
-systemctl status cloudmic && journalctl -u cloudmic -f
+python -m pip install -r desktop/requirements-dev.txt
+python -m pytest -q
+cd worker
+npm ci
+npm test
+npx wrangler deploy --dry-run
 ```
 
-验证：浏览器打开 `http://YOUR_SERVER:23777/` 能看到手机配对页。
-（若 23777 已被 frps 备用占用，改端口即可，电脑端填写对应地址。）
+完整部署和维护说明见 [部署教程](部署教程.md) 与 [修改说明](修改说明.md)。旧版实现可从 Git 历史及旧 Releases 获取；不会删除旧 release。
 
-### 2. 电脑端运行
+## 兼容与验证边界
 
-```bash
-cd cloudmic/pc
-python -m pip install -r requirements.txt -i https://mirrors.cloud.tencent.com/pypi/simple
-python gamesay.py          # 开发模式
-# 或打包：
-build.bat                  # 产出 dist/CloudMic.exe
-```
+目标平台为 Windows 10/11 x64。Windows Server、受限云桌面、蓝牙音频、游戏内按键说话和特定虚拟驱动需要在实际设备中验证。自动检查覆盖消息队列、取消、状态传递、配对认证、断线恢复，以及 Windows 打包程序启动，**不代替真人音质试听、虚拟麦克风端到端听音和国内网络测试**。
 
-### 3. 手机配对
+MIT（应用与中转）；依赖保留各自许可，参见 [第三方声明](THIRD_PARTY_NOTICES.md)。反馈：FAQ@keran.cc。
 
-1. 电脑端启动后，窗口显示二维码 + 4 位配对码
-2. 手机浏览器打开 `http://YOUR_SERVER:23777/`（建议"添加到主屏"变 App）
-3. 三种方式任选：
-   - **扫码**：手机系统相机/微信扫电脑屏幕二维码，自动打开并连接
-   - **网页内扫一扫**：配对页点"📷 扫一扫"对准电脑屏幕（需 HTTPS 环境；当前 http 下点击会给出引导）
-   - **输码**：手动输入电脑上的 4 位配对码
-4. 输入文字点发送 / 回车 → 电脑立刻"开口"，软件/游戏里的对方听到你的声音
-
-> 软件/游戏内设置：把麦克风设备选为 **CABLE Output (VB-Audio Virtual Cable)**。
-
-## 延迟预算
-
-| 环节 | 耗时 |
-|---|---|
-| 手机 → 服务器 → 电脑（WebSocket） | 约 20-50ms |
-| edge-tts 合成（中文短句） | 约 300-800ms |
-| 解码 + 播放到虚拟麦 | < 100ms |
-| **总计（edge-tts）** | **约 0.4-1.0s** |
-| SAPI 极速模式 | 约 0.2-0.4s |
-
-## 为什么用中转而不是 P2P
-
-云电脑/云桌面位于数据中心 NAT 之后，几乎必然是对称 NAT，WebRTC 打洞成功率很低。
-国内中转延迟 20-50ms，远低于 TTS 合成耗时，**不是瓶颈**。传输层已独立封装，
-未来若需直连可替换为 WebRTC DataChannel（服务器仅作信令）。
-
-## 安全说明
-
-- 配对 token 为 256bit 随机数，仅存于电脑端内存与二维码；4 位码用于快捷配对
-- 服务器不记录任何聊天内容，纯透传
-- 明文 HTTP/WS（内网级信任场景）；如需公网强安全可自行套 TLS 反代
-
-## 故障排查
-
-| 现象 | 处理 |
-|---|---|
-| 手机显示"电脑端离线" | 确认 exe 在运行、服务器连通（日志区显示"已连接"） |
-| 软件/游戏里听不到声音 | ① 确认已安装 VB-CABLE ② 软件/游戏麦克风选 CABLE Output ③ 电脑端"播放设备"选中 CABLE Input |
-| edge-tts 朗读失败 | 自动回退 SAPI；网络不通时可在设置切到"系统语音 SAPI" |
-| 讯飞 401 | 程序自动交换 APIKey/APISecret 重试；仍失败检查系统时间/凭据 |
-| 腾讯云报资源包用完 | 免费包只含标准/精品音色；大模型/超自然音色需单独领免费额度 |
-| 手机连不上页面 | 检查服务器进程与 23777 端口防火墙（`ss -tlnp | grep 23777`） |
-
----
-
-© 2026 Keran Technology Co., Ltd.
+© 2026 Keran Technology
