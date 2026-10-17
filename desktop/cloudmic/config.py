@@ -12,7 +12,7 @@ VOICES = {
     '云希 · 清晰青年': 'zh-CN-YunxiNeural',
     '晓伊 · 轻快亲切': 'zh-CN-XiaoyiNeural',
     '云健 · 沉稳有力': 'zh-CN-YunjianNeural',
-    '晓佳 · 台湾女声': 'zh-TW-HsiaoChenNeural',
+    '晓臻 · 台湾女声': 'zh-TW-HsiaoChenNeural',
     '晓曼 · 粤语女声': 'zh-HK-HiuMaanNeural',
     'Jenny · English': 'en-US-JennyNeural',
 }

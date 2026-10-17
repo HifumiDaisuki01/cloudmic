@@ -76,13 +76,14 @@ jobs:
         run: |
           $version = (Get-Content VERSION).Trim()
           New-Item -ItemType Directory -Force release-package | Out-Null
-          Copy-Item desktop/dist/CloudMic.exe,LICENSE,THIRD_PARTY_NOTICES.md,使用说明.md release-package/
+          Copy-Item -Path 'desktop/dist/CloudMic.exe','LICENSE','THIRD_PARTY_NOTICES.md','使用说明.md' -Destination release-package/
           Copy-Item desktop/licenses release-package/licenses -Recurse
           Compress-Archive release-package/* "CloudMic-$version-windows-x64.zip"
           Compress-Archive third-party-sources/* third-party-sources.zip
           Get-FileHash "CloudMic-$version-windows-x64.zip",desktop/dist/CloudMic.exe,third-party-sources.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Set-Content SHA256SUMS.txt
           (Get-Item desktop/dist/CloudMic.exe).Length | Set-Content exe-size-bytes.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: CloudMic-windows-x64
           path: |
