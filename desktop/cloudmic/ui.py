@@ -8,9 +8,10 @@ import tkinter as tk
 from tkinter import messagebox
 import webbrowser
 import customtkinter as ctk
-from PIL import Image
+from PIL import ImageTk
 import qrcode
 from . import __version__
+from .branding import make_mark
 from .config import Settings, VOICES, validate_relay
 from .transport import Backend
 from .audio import outputs
@@ -46,7 +47,9 @@ class App(ctk.CTk):
         ctk.set_default_color_theme('blue')
         super().__init__()
         self.title('CloudMic Next')
-        self.geometry('900x690')
+        self.window_icon=ImageTk.PhotoImage(make_mark(64),master=self)
+        self.iconphoto(True,self.window_icon)
+        self.geometry('900x670')
         self.minsize(860, 650)
         self.configure(fg_color=BG)
         self.cfg = Settings.load()
@@ -63,17 +66,32 @@ class App(ctk.CTk):
         self.refresh_devices()
         self.backend.start()
         self.after(80, self.poll)
+        self.after(100, self.position_window)
         self.after(1000, self.countdown)
         if '--smoke-test' in sys.argv:
             self.after(3500, self.smoke_report)
         else:
             self.after(1500, self.setup_tray)
 
+    def position_window(self):
+        self.update_idletasks()
+        left,top,right,bottom=0,0,self.winfo_screenwidth(),self.winfo_screenheight()-45
+        if os.name=='nt':
+            import ctypes
+            from ctypes import wintypes
+            rect=wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(0x30,0,ctypes.byref(rect),0):
+                left,top,right,bottom=rect.left,rect.top,rect.right,rect.bottom
+        x=left+max(0,(right-left-self.winfo_width())//2)
+        y=top+max(0,(bottom-top-self.winfo_height()-40)//2)
+        self.geometry(f'+{x}+{y}')
+
     def build(self):
         head = ctk.CTkFrame(self, fg_color='transparent')
         head.grid(row=0, column=0, sticky='ew', padx=30, pady=(26, 22))
         head.grid_columnconfigure(1, weight=1)
-        mark = label(head, text='▥', font=font(25, 'bold'), fg_color=BLUE, text_color='white', width=42, height=42, corner_radius=13)
+        self.brand_image=ctk.CTkImage(make_mark(128),size=(42,42))
+        mark = label(head, text='',image=self.brand_image,width=42,height=42)
         mark.grid(row=0, column=0, rowspan=2, padx=(0, 12))
         label(head, text='CloudMic', font=font(23, 'bold'), text_color=INK, anchor='w').grid(row=0, column=1, sticky='w')
         label(head, text='NEXT GENERATION   /   让文字成为声音', font=font(10), text_color=MUTED, anchor='w').grid(row=1, column=1, sticky='w')
@@ -140,6 +158,7 @@ class App(ctk.CTk):
         self.speech_status.grid(row=13,column=0,sticky='ew',padx=24,pady=(12,18))
         foot=ctk.CTkFrame(self,fg_color='transparent');foot.grid(row=2,column=0,sticky='ew',padx=32,pady=(16,20))
         label(foot,text=f'CloudMic {__version__}  ·  Keran Technology',font=font(10),text_color=MUTED).pack(side='left')
+        ctk.CTkButton(foot,text='关于与许可',command=self.about_window,fg_color='transparent',text_color=MUTED,font=font(10),height=24,width=80).pack(side='left',padx=8)
         ctk.CTkButton(foot,text='虚拟麦克风安装帮助 ↗',command=self.driver_help,fg_color='transparent',text_color=BLUE,font=font(10),height=24,width=160).pack(side='right')
 
     def apply(self):
@@ -213,6 +232,17 @@ class App(ctk.CTk):
         messagebox.showinfo('首次配置虚拟麦克风','游戏或聊天软件需要虚拟音频驱动才能接收合成声音。\n\n1. 在 VB-Audio 官方页面下载 VB-CABLE。\n2. 解压完整包，以管理员身份运行安装器。\n3. 按安装器要求重启后，点击云麦“刷新设备”。\n4. 游戏内麦克风选择 CABLE Output。\n\nVB-CABLE 为第三方 donationware，许可和支持由 VB-Audio 提供。\n仅扬声器试听不需要安装驱动。',parent=self)
         webbrowser.open('https://vb-audio.com/Cable/')
 
+    def about_window(self):
+        win=ctk.CTkToplevel(self);win.title('关于与许可 · CloudMic');win.geometry('650x490');win.transient(self)
+        win.configure(fg_color=BG)
+        label(win,text=f'CloudMic Next {__version__}',font=font(22,'bold'),text_color=INK).pack(anchor='w',padx=24,pady=(24,12))
+        box=ctk.CTkTextbox(win,font=font(12),wrap='word',fg_color=CARD,text_color=INK)
+        box.pack(fill='both',expand=True,padx=24,pady=(0,24))
+        root=Path(getattr(sys,'_MEIPASS',Path(__file__).resolve().parents[2]))
+        try:text=(root/'THIRD_PARTY_NOTICES.md').read_text('utf-8')
+        except OSError:text='CloudMic Next · MIT\nhttps://github.com/HifumiDaisuki01/cloudmic\n第三方许可见发布包内的 THIRD_PARTY_NOTICES.md 和 licenses。'
+        box.insert('1.0',text);box.configure(state='disabled')
+
     def settings_window(self):
         win=ctk.CTkToplevel(self);win.title('设置 · CloudMic');win.geometry('530x570');win.resizable(False,False);win.configure(fg_color=BG);win.transient(self)
         win.grid_columnconfigure(0,weight=1)
@@ -254,7 +284,7 @@ class App(ctk.CTk):
             box=(self.winfo_rootx(),self.winfo_rooty(),self.winfo_rootx()+self.winfo_width(),self.winfo_rooty()+self.winfo_height())
             ImageGrab.grab(bbox=box).save(report.with_suffix('.png'))
         report.write_text(json.dumps({'ok':self.winfo_width()>=860 and self.speech_status.winfo_rooty()+self.speech_status.winfo_height()<self.winfo_rooty()+self.winfo_height(), 'version':__version__,
-            'width':self.winfo_width(),'height':self.winfo_height(),'audio_devices':len(outputs()),
+            'width':self.winfo_width(),'height':self.winfo_height(),'screen':[self.winfo_screenwidth(),self.winfo_screenheight()], 'audio_devices':len(outputs()),
             'ui':'packaged application startup, no physical audio playback tested'},ensure_ascii=False),encoding='utf-8')
         self.quit_app()
 
@@ -262,9 +292,7 @@ class App(ctk.CTk):
         if os.name!='nt' or self.closing:return
         try:
             import pystray
-            from PIL import ImageDraw
-            image=Image.new('RGB',(64,64),BLUE);d=ImageDraw.Draw(image)
-            for x,top,bottom in [(18,26,40),(32,15,50),(46,22,44)]:d.line((x,top,x,bottom),fill='white',width=5)
+            image=make_mark(64)
             self.tray=pystray.Icon('CloudMic',image,'CloudMic Next',menu=pystray.Menu(
                 pystray.MenuItem('打开云麦',lambda:self.after(0,self.show),default=True),
                 pystray.MenuItem('停止朗读',lambda:self.backend.stop_speech()),

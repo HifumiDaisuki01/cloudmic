@@ -6,6 +6,8 @@
 
 [下载 Windows 版](https://github.com/HifumiDaisuki01/cloudmic/releases/latest) · [手机配对页](https://cloudmic-next.keran.workers.dev/) · [使用说明](使用说明.md) · [自行部署](部署教程.md)
 
+![CloudMic Next Windows 桌面](https://github.com/HifumiDaisuki01/cloudmic/releases/download/v2.0.0/windows-smoke.png)
+
 ## 这是一次重建
 
 2.0 重新设计了桌面客户端、手机网页、配对协议、语音队列和云端中转。**不是旧版换皮，也不兼容 1.x 的配对服务器。**
@@ -92,7 +94,7 @@ npx wrangler deploy --dry-run
 
 ## 兼容与验证边界
 
-目标平台为 Windows 10/11 x64。Windows Server、受限云桌面、蓝牙音频、游戏内按键说话和特定虚拟驱动需要在实际设备中验证。自动检查覆盖消息队列、取消、状态传递、配对认证、断线恢复，以及 Windows 打包程序启动，**不代替真人音质试听、虚拟麦克风端到端听音和国内网络测试**。
+目标平台为 Windows 10/11 x64。Windows Server、受限云桌面、蓝牙音频、游戏内按键说话和特定虚拟驱动需要在实际设备中验证。自动检查覆盖消息队列、取消、状态传递、配对认证、断线恢复，以及 Windows 打包程序启动，**不代替真人音质试听、虚拟麦克风端到端听音和国内网络测试**。具体范围见 [验证记录](docs/VALIDATION.md)。
 
 MIT（应用与中转）；依赖保留各自许可，参见 [第三方声明](THIRD_PARTY_NOTICES.md)。反馈：FAQ@keran.cc。
 
