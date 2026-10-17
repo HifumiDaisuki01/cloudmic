@@ -1,17 +1,16 @@
-# CloudMic 2.0.0 · 完全重置的下一代
+# CloudMic 2.0.1 · 内置虚拟麦克风，首次自动配置
 
-这是对旧版 CloudMic 的整体重建：全新桌面 UI、手机网页、配对协议、语音队列与 Cloudflare Workers 中转。不兼容 1.x 服务端。
+在完全重置的下一代 2.0 基础上，补齐首次使用流程：
 
-- Windows 独立 EXE，无需 Python、Qt、Node.js、FFmpeg。
-- 默认托管中转，无需自备服务器；扫码或 8 位码配对，HTTPS/WSS 身份分离。
-- 自然语音、Windows 本地回退与可选 Azure Speech；分句合成、内存缓存。
-- 排队 / 合成 / 播放 / 完成 / 失败回执、停止清空、断线恢复与重复消息抑制。
-- 新版不捆绑虚拟麦克风驱动：游戏输入仍需一次性配置兼容虚拟音频设备；已有设备直接选用。
+- EXE 内置官方 VB-CABLE Pack45 完整包，新增约 1.3 MB，无需用户下载。
+- 未发现 CABLE Input 时自动运行官方静默安装器，不弹应用内确认。
+- 使用标准 Windows UAC 提权；普通权限用户可能仍需点击一次“是”。不会绕过 UAC 或擅自重启。
+- 安装后自动重新检测并选中虚拟麦；需要重启时显示提示，并避免同一次开机反复安装。
+- 保留 VB-Audio / Vincent Burel 来源、donationware 声明、官网捐助入口与原始许可。
+- 18 项桌面回归测试，包含完整包校验、解压、UAC 取消、安装退出码、超时与重启标记。Windows 打包检查验证内置安装包，但不在构建机安装驱动。
 
-下载 ZIP 解压运行 CloudMic.exe；也可单独下载 EXE。手机页：https://cloudmic-next.keran.workers.dev/
+下载 ZIP 解压运行 CloudMic.exe。已有驱动会跳过安装；取消/失败可在窗口底部重试。游戏麦克风仍需选择 CABLE Output。
 
-自动检查包含 9 项桌面回归、协议验证、16 项中转集成检查及 Windows EXE 启动。附带截图与启动报告；它们不证明实际虚拟麦听音已通过。音质、真实游戏输入、国内网络与实际延迟需在目标设备验证，不承诺固定延迟。免费托管服务受平台配额限制。
+VB-CABLE 是独立第三方 donationware，欢迎支持作者：https://vb-audio.com/Cable/ 。标准包按当前官网条件随应用分发，A+B/C+D 不包含。特殊企业/机构场景请遵循原作者额外许可条件。
 
-EXE 未购买代码签名证书，Windows 可能显示发布者未知；请核对本 release 的 SHA256。旧 Releases 保留。
-
-许可见 ZIP 内 THIRD_PARTY_NOTICES.md 和 licenses。LGPL 对应依赖源码附在 third-party-sources.zip；应用完整源码可由本 tag 源码包获得并重新构建。
+与 2.0 的 Workers 中转协议兼容，云端服务无需更换。旧 Releases 保留。真实驱动安装和游戏输入仍需目标 Windows 设备验收；附带的启动截图/JSON 报告不代表物理音频验收。

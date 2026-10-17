@@ -28,6 +28,7 @@ class Backend:
         self.speaker = None
         self.outbox = None
         self.connected = False
+        self.audio_paused = False
         self.thread = threading.Thread(target=self._thread_main, daemon=True, name='CloudMic network')
 
     def emit(self, kind, **kwargs):
@@ -49,7 +50,11 @@ class Backend:
             self.loop.call_soon_threadsafe(action, *args)
 
     def test(self, text):
-        def enqueue(): self.speaker.enqueue(str(uuid.uuid4()), text, self.settings)
+        def enqueue():
+            if self.audio_paused:
+                self.status(str(uuid.uuid4()), 'failed', '正在配置虚拟麦克风，请稍等', 0)
+            else:
+                self.speaker.enqueue(str(uuid.uuid4()), text, self.settings)
         self.call(enqueue)
 
     def stop_speech(self):
@@ -104,6 +109,9 @@ class Backend:
                 if not self.connected: continue
                 id = obj.get('id', '')
                 if isinstance(id, str) and 8 <= len(id) <= 64:
+                    if self.audio_paused:
+                        self.status(id, 'failed', '正在配置虚拟麦克风，请稍等', 0)
+                        continue
                     self.speaker.enqueue(id, obj.get('text', ''), self.settings)
             elif obj.get('type') == 'stop': self.speaker.stop()
 

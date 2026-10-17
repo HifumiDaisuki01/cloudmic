@@ -52,6 +52,7 @@ jobs:
       - run: python -m pip install -r desktop/requirements-dev.txt
       - run: python -m pytest -q
       - run: python scripts/collect_licenses.py
+      - run: python scripts/fetch_vbcable.py
       - name: Include corresponding LGPL sources
         run: python scripts/fetch_sources.py
       - run: python -m PyInstaller --clean --noconfirm CloudMic.spec

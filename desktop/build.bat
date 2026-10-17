@@ -7,5 +7,7 @@ if errorlevel 1 exit /b 1
 if errorlevel 1 exit /b 1
 .venv\Scripts\python ..\scripts\collect_licenses.py
 if errorlevel 1 exit /b 1
+.venv\Scripts\python ..\scripts\fetch_vbcable.py
+if errorlevel 1 exit /b 1
 .venv\Scripts\python -m PyInstaller --clean --noconfirm CloudMic.spec
 pause

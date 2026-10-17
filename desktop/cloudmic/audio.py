@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import miniaudio
 import sounddevice as sd
 
+_AUDIO_LOCK = threading.RLock()
+
 @dataclass(frozen=True)
 class OutputDevice:
     index: int
@@ -42,7 +44,7 @@ def choose_output(name: str, preview: bool):
     return match
 
 
-def play_audio(data: bytes, device_name: str, preview: bool, volume: float, cancel: threading.Event, started=None):
+def _play_audio(data: bytes, device_name: str, preview: bool, volume: float, cancel: threading.Event, started=None):
     device = choose_output(device_name, preview)
     # Resample to the actual endpoint format. No numpy or external ffmpeg needed.
     channels = 1
@@ -67,3 +69,16 @@ def play_audio(data: bytes, device_name: str, preview: bool, volume: float, canc
                 stream.abort()
                 return
             stream.write(samples[start:start + chunk].tobytes())
+
+
+def play_audio(*args):
+    with _AUDIO_LOCK:
+        return _play_audio(*args)
+
+
+def reinitialize():
+    """Refresh PortAudio's endpoint snapshot after driver installation, while idle."""
+    with _AUDIO_LOCK:
+        sd._terminate()
+        sd._initialize()
+        return outputs()

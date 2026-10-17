@@ -4,6 +4,7 @@ from pathlib import Path
 import os
 import queue
 import sys
+import threading
 import tkinter as tk
 from tkinter import messagebox
 import webbrowser
@@ -14,7 +15,8 @@ from . import __version__
 from .branding import make_mark
 from .config import Settings, VOICES, validate_relay
 from .transport import Backend
-from .audio import outputs
+from .audio import outputs, reinitialize
+from . import driver
 from .speech import save_azure_key
 
 BG = '#F6F7FB'
@@ -59,6 +61,8 @@ class App(ctk.CTk):
         self.last_message = ''
         self.closing = False
         self.tray = None
+        self.driver_installing = False
+        self.driver_checked = False
         self.protocol('WM_DELETE_WINDOW', self.on_close)
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -72,6 +76,7 @@ class App(ctk.CTk):
             self.after(3500, self.smoke_report)
         else:
             self.after(1500, self.setup_tray)
+            self.after(1800, self.ensure_driver)
 
     def position_window(self):
         self.update_idletasks()
@@ -159,7 +164,7 @@ class App(ctk.CTk):
         foot=ctk.CTkFrame(self,fg_color='transparent');foot.grid(row=2,column=0,sticky='ew',padx=32,pady=(16,20))
         label(foot,text=f'CloudMic {__version__}  ·  Keran Technology',font=font(10),text_color=MUTED).pack(side='left')
         ctk.CTkButton(foot,text='关于与许可',command=self.about_window,fg_color='transparent',text_color=MUTED,font=font(10),height=24,width=80).pack(side='left',padx=8)
-        ctk.CTkButton(foot,text='虚拟麦克风安装帮助 ↗',command=self.driver_help,fg_color='transparent',text_color=BLUE,font=font(10),height=24,width=160).pack(side='right')
+        ctk.CTkButton(foot,text='安装虚拟麦 · VB-Audio ↗',command=self.driver_help,fg_color='transparent',text_color=BLUE,font=font(10),height=24,width=160).pack(side='right')
 
     def apply(self):
         name=self.device_var.get()
@@ -179,13 +184,14 @@ class App(ctk.CTk):
         self.apply();self.backend.test(text)
 
     def refresh_devices(self):
+        if self.driver_installing:return
         try:
             devices=outputs()
             names=list(dict.fromkeys(d.name for d in devices))
             self.device.configure(values=['自动选择虚拟麦克风']+names)
             self.device_var.set(self.cfg.device if self.cfg.device in names else '自动选择虚拟麦克风')
             has_cable=any(d.cable for d in devices)
-            self.device_hint.configure(text='游戏麦克风请选择 CABLE Output；云麦输出选择 CABLE Input。' if has_cable else '尚未检测到虚拟麦克风。可先打开扬声器试听，或查看安装帮助。',text_color=MUTED if has_cable else '#B27A30')
+            self.device_hint.configure(text='游戏麦克风请选择 CABLE Output；云麦输出选择 CABLE Input。' if has_cable else '尚未检测到虚拟麦克风，即将自动安装 VB-CABLE（VB-Audio donationware）。',text_color=MUTED if has_cable else '#B27A30')
         except Exception:self.device_hint.configure(text='未能读取音频设备，请检查 Windows 音频服务。')
 
     def copy_link(self):
@@ -225,12 +231,58 @@ class App(ctk.CTk):
                 if event['detail']:text+=' · '+event['detail']
                 if event['state']=='playing':text+=f" · {event['ms']} ms（接收至开始播放）"
                 self.speech_status.configure(text=text,text_color='#BB4C58' if event['state']=='failed' else MUTED)
+            elif kind=='driver':
+                self.driver_installing=False
+                self.backend.audio_paused=False
+                self.refresh_devices()
+                if event['detected']:
+                    driver.clear_pending()
+                    self.device_var.set('自动选择虚拟麦克风')
+                    self.preview_var.set(False)
+                    self.apply()
+                    self.device_hint.configure(text='VB-CABLE 已就绪。游戏麦克风选 CABLE Output。',text_color='#138466')
+                else:
+                    message='VB-CABLE 已安装，请重启电脑完成配置；下次启动自动使用。' if event['state']=='installed' else event['message']
+                    self.device_hint.configure(text=message,text_color='#B27A30')
+                self.speech_status.configure(text=driver.NOTICE,text_color=MUTED)
             elif kind=='error':self.speech_status.configure(text=event['message'],text_color='#BB4C58')
         self.after(80,self.poll)
 
+    def ensure_driver(self):
+        if self.closing or self.driver_checked or '--smoke-test' in sys.argv or os.name!='nt':return
+        self.driver_checked=True
+        try:
+            if any(d.cable for d in outputs()):
+                driver.clear_pending()
+                return
+        except Exception:pass
+        if driver.pending_reboot():
+            self.device_hint.configure(text='VB-CABLE 已安装，请重启电脑完成驱动配置。无需再次安装。',text_color='#B27A30')
+            return
+        self.start_driver_install()
+
+    def start_driver_install(self):
+        if self.closing or self.driver_installing or os.name!='nt':return
+        self.driver_installing=True
+        self.backend.audio_paused=True
+        self.backend.stop_speech()
+        self.device_hint.configure(text='正在静默安装 VB-CABLE · VB-Audio donationware。Windows 可能请求管理员确认。',text_color=BLUE)
+        self.speech_status.configure(text=driver.NOTICE,text_color=MUTED)
+        def work():
+            result=driver.install()
+            devices=[]
+            if result.state=='installed':
+                try:devices=reinitialize()
+                except Exception:pass
+            self.backend.emit('driver',state=result.state,message=result.message,detected=any(d.cable for d in devices))
+        threading.Thread(target=work,daemon=True,name='CloudMic driver setup').start()
+
     def driver_help(self):
-        messagebox.showinfo('首次配置虚拟麦克风','游戏或聊天软件需要虚拟音频驱动才能接收合成声音。\n\n1. 在 VB-Audio 官方页面下载 VB-CABLE。\n2. 解压完整包，以管理员身份运行安装器。\n3. 按安装器要求重启后，点击云麦“刷新设备”。\n4. 游戏内麦克风选择 CABLE Output。\n\nVB-CABLE 为第三方 donationware，许可和支持由 VB-Audio 提供。\n仅扬声器试听不需要安装驱动。',parent=self)
-        webbrowser.open('https://vb-audio.com/Cable/')
+        win=ctk.CTkToplevel(self);win.title('虚拟麦克风 · VB-Audio');win.geometry('550x300');win.transient(self);win.configure(fg_color=BG)
+        label(win,text='内置 VB-CABLE · 无需下载',font=font(21,'bold'),text_color=INK).pack(anchor='w',padx=24,pady=(24,12))
+        label(win,text='由 VB-Audio / Vincent Burel 提供，属于 donationware。\n欢迎支持原作者；驱动不属于 CloudMic 的 MIT 许可。\n安装需管理员权限，完成后可能需要重启电脑。\n已有虚拟麦时，游戏输入选 CABLE Output。',font=font(12),text_color=MUTED,justify='left').pack(anchor='w',padx=24,pady=(0,15))
+        button(win,'安装 / 重试安装',lambda:(win.destroy(),self.start_driver_install()),True).pack(anchor='w',padx=24,pady=(0,10))
+        ctk.CTkButton(win,text='VB-Audio 官网与捐助 ↗',command=lambda:webbrowser.open(driver.SOURCE),fg_color='transparent',text_color=BLUE,font=font(12)).pack(anchor='w',padx=20)
 
     def about_window(self):
         win=ctk.CTkToplevel(self);win.title('关于与许可 · CloudMic');win.geometry('650x490');win.transient(self)
@@ -283,9 +335,14 @@ class App(ctk.CTk):
         if os.name=='nt':
             box=(self.winfo_rootx(),self.winfo_rooty(),self.winfo_rootx()+self.winfo_width(),self.winfo_rooty()+self.winfo_height())
             ImageGrab.grab(bbox=box).save(report.with_suffix('.png'))
-        report.write_text(json.dumps({'ok':self.winfo_width()>=860 and self.speech_status.winfo_rooty()+self.speech_status.winfo_height()<self.winfo_rooty()+self.winfo_height(), 'version':__version__,
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='cloudmic-driver-check-') as temp:
+            setup=driver.prepare_installer(directory=Path(temp))
+            bundled=setup.read_bytes()[:2]==b'MZ'
+        report.write_text(json.dumps({'ok':self.winfo_width()>=860 and bundled and driver.install_api_available() and self.speech_status.winfo_rooty()+self.speech_status.winfo_height()<self.winfo_rooty()+self.winfo_height(), 'version':__version__,
             'width':self.winfo_width(),'height':self.winfo_height(),'screen':[self.winfo_screenwidth(),self.winfo_screenheight()], 'audio_devices':len(outputs()),
-            'ui':'packaged application startup, no physical audio playback tested'},ensure_ascii=False),encoding='utf-8')
+            'bundled_driver_verified':bundled,'elevation_api_available':driver.install_api_available(),'driver_installation_executed':False,
+            'ui':'packaged application startup and embedded driver extraction; no physical audio playback tested'},ensure_ascii=False),encoding='utf-8')
         self.quit_app()
 
     def setup_tray(self):

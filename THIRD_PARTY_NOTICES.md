@@ -30,7 +30,23 @@ included in the release's `licenses` directory and in the executable bundle.
 
 ## Virtual audio driver
 
-VB-CABLE is NOT bundled, silently installed, or covered by the MIT license.
-It is a separate donationware product by VB-Audio / Vincent Burel:
-https://vb-audio.com/Cable/ . Obtain it from its author and follow its license.
-Existing compatible audio devices can be selected without installing VB-CABLE.
+CloudMic desktop 2.0.1 embeds the complete, unmodified standard
+`VBCABLE_Driver_Pack45.zip` (1,318,877 bytes, SHA256
+`b950e39f01af1d04ea623c8f6d8eb9b6ea5c477c637295fabf20631c85116bfb`).
+
+VB-CABLE is by **VB-Audio / Vincent Burel** and is **donationware**.
+Please support its author at https://vb-audio.com/Cable/ . It is a separate
+third-party product, not relicensed under the CloudMic MIT license.
+The original archive and full readme/license are retained without changes.
+
+The author's current distribution policy permits the standard VB-CABLE package
+to accompany an application, including embedding in an installation package,
+when end users can identify the VB-Audio origin and donationware model and can
+support the author: https://vb-audio.com/Services/licensing.htm (checked
+2026-10-17). Professional/organization distribution has additional conditions.
+The A+B and C+D products are not bundled.
+
+When the required device is absent, CloudMic launches the official installer
+with `-i -h`, using standard Windows elevation. UAC, driver-signature policy,
+and the Windows security model remain in force; the application never performs
+an automatic reboot. Driver installation is disabled in CI smoke tests.

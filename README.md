@@ -1,12 +1,12 @@
 # CloudMic Next · 云麦下一代
 
-**完全重置的 CloudMic 2.0。** 为言语障碍人士、需要文字发声的人，以及不方便开口的玩家提供更简单的交流方式。
+**完全重置的 CloudMic 2.0。当前桌面版 2.0.1，新增内置虚拟麦克风自动安装。** 为言语障碍人士、需要文字发声的人，以及不方便开口的玩家提供更简单的交流方式。
 
 手机打字，电脑发声，让游戏和聊天软件里的对方听见你。
 
 [下载 Windows 版](https://github.com/HifumiDaisuki01/cloudmic/releases/latest) · [手机配对页](https://cloudmic-next.keran.workers.dev/) · [使用说明](使用说明.md) · [自行部署](部署教程.md)
 
-![CloudMic Next Windows 桌面](https://github.com/HifumiDaisuki01/cloudmic/releases/download/v2.0.0/windows-smoke.png)
+![CloudMic Next Windows 桌面](https://github.com/HifumiDaisuki01/cloudmic/releases/download/v2.0.1/windows-smoke.png)
 
 ## 这是一次重建
 
@@ -23,20 +23,25 @@
 
 ## 立即使用
 
-1. 从 Releases 下载 `CloudMic-2.0.0-windows-x64.zip`，解压后运行 `CloudMic.exe`。也可单独下载 EXE，许可证和使用说明在 ZIP 中更齐全。
+1. 从 Releases 下载 `CloudMic-2.0.1-windows-x64.zip`，解压后运行 `CloudMic.exe`。也可单独下载 EXE，许可证和使用说明在 ZIP 中更齐全。
 2. 先打开“扬声器试听”，点“试听 / 测试朗读”，确认声音正常。
 3. 手机扫描电脑二维码，或打开配对页输入电脑上的 **8 位码**。
 4. 输入文字或点击快捷短语，即可发声。手机与电脑可以在不同网络中。
 
 ### 让游戏听见声音
 
-如果已有兼容虚拟音频设备，直接选中它。如果没有，需要**一次性安装虚拟音频驱动**：
+**2.0.1 已内置官方 VB-CABLE Pack45 完整包（1.29 MB），终端用户无需另外下载。**
 
-- 从 [VB-Audio 官方网站](https://vb-audio.com/Cable/) 获取 VB-CABLE，解压完整包，以管理员身份安装，按安装器提示重启。
-- 云麦输出选 **CABLE Input**；游戏或聊天软件的麦克风选 **CABLE Output**。
-- 关闭“扬声器试听”。按键说话、语音激活等仍需在游戏内设置。
+1. 首次启动若没有 CABLE Input，自动解压并启动官方静默安装器，无需点击应用内安装确认。
+2. Windows 若请求管理员权限，点一次“是”；已经以管理员身份运行时通常不再需要这一步。应用不绕过系统 UAC。
+3. 安装后自动重新检测音频设备；设备可用时切到 CABLE Input 并关闭扬声器试听。驱动要求重启而设备尚未出现时，会提示重启，并避免本次开机期间反复安装。
+4. 游戏或聊天软件的麦克风选 **CABLE Output**。按键说话、语音激活仍在游戏内设置。
 
-**应用不能凭空创建系统麦克风。** 单独试听不需要驱动；向游戏注入声音需要虚拟音频设备。VB-CABLE 是独立第三方 donationware，2.0 不再将驱动集成进安装流程，也不会静默提权安装。云电脑若禁止安装驱动，需要使用已有的兼容设备。
+已有 VB-CABLE 就跳过安装。取消管理员确认、安装失败或超时会显示结果，可点“安装虚拟麦 · VB-Audio”重试；不会自动重启电脑。
+
+VB-CABLE 由 **VB-Audio / Vincent Burel** 提供，属于 **donationware，欢迎支持原作者**。[官网与捐助](https://vb-audio.com/Cable/) · [当前分发许可](https://vb-audio.com/Services/licensing.htm)。只包含标准 VB-CABLE，不包含 A+B / C+D；驱动保留原作者许可，不能按 CloudMic 的 MIT 许可重新授权。
+
+Windows 内核驱动仍需管理员权限，受限云电脑若禁止安装，需联系环境提供者或使用已有设备。
 
 ## 语音与延迟
 

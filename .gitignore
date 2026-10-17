@@ -26,3 +26,5 @@ SHA256SUMS.txt
 exe-size-bytes.txt
 Thumbs.db
 .DS_Store
+
+desktop/vendor/*.zip

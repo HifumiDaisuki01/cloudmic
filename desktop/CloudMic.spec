@@ -10,8 +10,8 @@ icon.parent.mkdir(exist_ok=True)
 make_mark().save(icon, format='ICO', sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
 notices = [(str(root / 'THIRD_PARTY_NOTICES.md'), '.'), (str(root / 'LICENSE'), '.')]
 a = Analysis(['main.py'], pathex=[SPECPATH],
-    binaries=[], datas=collect_data_files('customtkinter') + notices + [(str(Path(SPECPATH) / 'licenses'), 'licenses')],
-    hiddenimports=['PIL._tkinter_finder', 'win32com.client', 'win32timezone', 'win32cred', 'pythoncom'] + collect_submodules('pystray'),
+    binaries=[], datas=collect_data_files('customtkinter') + notices + [(str(Path(SPECPATH) / 'licenses'), 'licenses'), (str(Path(SPECPATH) / 'vendor' / 'VBCABLE_Driver_Pack45.zip'), 'vendor')],
+    hiddenimports=['PIL._tkinter_finder', 'win32com.client', 'win32com.shell.shell', 'win32event', 'win32process', 'win32api', 'win32timezone', 'win32cred', 'pythoncom'] + collect_submodules('pystray'),
     excludes=['numpy', 'PySide6', 'PyQt5', 'matplotlib', 'scipy', 'pandas', 'pytest', 'IPython'],
     noarchive=False)
 pyz = PYZ(a.pure)
