@@ -106,3 +106,14 @@ async def test_next_sentence_synthesized_while_first_plays():
     worker=asyncio.create_task(q.run());await asyncio.wait_for(q.queue.join(),2)
     assert any(e[1]=='done' for e in events)
     worker.cancel();await asyncio.gather(worker,return_exceptions=True)
+
+@pytest.mark.asyncio
+async def test_failed_device_never_reports_playing():
+    events=[]
+    def bad_output(*args):raise RuntimeError('No output device')
+    q=SpeechQueue(FakeSynth(),bad_output,lambda *e:events.append(e))
+    q.enqueue('missing-device','hello',Settings());worker=asyncio.create_task(q.run())
+    await asyncio.wait_for(q.queue.join(),1)
+    assert any(e[1]=='failed' for e in events)
+    assert not any(e[1]=='playing' for e in events)
+    worker.cancel();await asyncio.gather(worker,return_exceptions=True)

@@ -8,13 +8,16 @@ import uuid
 from urllib.parse import urlsplit, urlunsplit, urlencode
 import aiohttp
 import websockets
-from .audio import play_audio
 from .config import Settings, validate_relay
 from .speech import SpeechQueue, Synthesizer
 
 
 class Backend:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, play=None):
+        if play is None:
+            from .audio import play_audio
+            play = play_audio
+        self.play = play
         self.settings = settings
         self.events = queue.Queue(maxsize=512)
         self.loop = None
@@ -114,7 +117,7 @@ class Backend:
     async def run(self):
         self.loop = asyncio.get_running_loop()
         self.outbox = asyncio.Queue(maxsize=128)
-        self.speaker = SpeechQueue(Synthesizer(), play_audio, self.status)
+        self.speaker = SpeechQueue(Synthesizer(), self.play, self.status)
         speech_task = asyncio.create_task(self.speaker.run())
         timeout = aiohttp.ClientTimeout(total=12)
         try:

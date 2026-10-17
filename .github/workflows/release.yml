@@ -52,13 +52,8 @@ jobs:
       - run: python -m pip install -r desktop/requirements-dev.txt
       - run: python -m pytest -q
       - run: python scripts/collect_licenses.py
-      - name: Include corresponding LGPL sources and full GPL license
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force third-party-sources | Out-Null
-          python -m pip download --no-deps --no-binary :all: edge-tts==7.3.1 -d third-party-sources
-          Invoke-WebRequest https://github.com/moses-palmer/pystray/archive/refs/tags/v0.19.5.tar.gz -OutFile third-party-sources/pystray-0.19.5.tar.gz
-          Invoke-WebRequest https://www.gnu.org/licenses/gpl-3.0.txt -OutFile desktop/licenses/GPL-3.0.txt
+      - name: Include corresponding LGPL sources
+        run: python scripts/fetch_sources.py
       - run: python -m PyInstaller --clean --noconfirm CloudMic.spec
         working-directory: desktop
       - name: Packaged EXE startup and UI smoke test
@@ -78,6 +73,7 @@ jobs:
           New-Item -ItemType Directory -Force release-package | Out-Null
           Copy-Item -Path 'desktop/dist/CloudMic.exe','LICENSE','THIRD_PARTY_NOTICES.md','使用说明.md' -Destination release-package/
           Copy-Item desktop/licenses release-package/licenses -Recurse
+          python -m pip freeze | Set-Content release-package/requirements-resolved.txt
           Compress-Archive release-package/* "CloudMic-$version-windows-x64.zip"
           Compress-Archive third-party-sources/* third-party-sources.zip
           Get-FileHash "CloudMic-$version-windows-x64.zip",desktop/dist/CloudMic.exe,third-party-sources.zip -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  $([System.IO.Path]::GetFileName($_.Path))" } | Set-Content SHA256SUMS.txt

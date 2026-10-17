@@ -145,8 +145,8 @@ export class Room extends DurableObject {
       }
     } catch { this.send(ws, { type: 'error', detail: '消息格式错误' }); }
   }
-  webSocketClose(ws) { ws.serializeAttachment({ role: 'closed' }); this.peers(); }
-  webSocketError(ws) { ws.serializeAttachment({ role: 'closed' }); this.peers(); }
+  webSocketClose(ws, code) { ws.serializeAttachment({ role: 'closed' }); try { ws.close(code === 1005 || code === 1006 ? 1000 : code, 'closed'); } catch {} this.peers(); }
+  webSocketError(ws) { ws.serializeAttachment({ role: 'closed' }); try { ws.close(1011, 'connection error'); } catch {} this.peers(); }
   async alarm() {
     const meta = await this.ctx.storage.get('meta');
     if (!meta || meta.expiresAt <= Date.now()) {
