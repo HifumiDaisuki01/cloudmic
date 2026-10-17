@@ -127,6 +127,8 @@ class Synthesizer:
                     result = (await asyncio.to_thread(sapi_bytes, text, cfg.rate, cancel), '在线失败，已用本地语音')
         if cancel.is_set(): raise asyncio.CancelledError
         # Memory-only LRU. Conversation text/audio never written to a history file.
+        if cfg.engine == 'auto' and result[1] == '在线失败，已用本地语音':
+            return result
         self.cache[key] = result
         self.cache_bytes += len(result[0])
         while len(self.cache) > 48 or self.cache_bytes > 12_000_000:
@@ -193,15 +195,24 @@ class SpeechQueue:
                 self.status(item.id, 'synthesizing', '', 0)
                 first = True
                 parts = segments(item.text)
-                for part in parts:
+                self.synthesis = asyncio.create_task(self.synth.synthesize(parts[0], item.cfg, item.cancel))
+                for index, part in enumerate(parts):
                     if item.cancel.is_set(): raise asyncio.CancelledError
-                    self.synthesis = asyncio.create_task(self.synth.synthesize(part, item.cfg, item.cancel))
                     audio, engine = await self.synthesis
                     self.synthesis = None
                     if item.cancel.is_set(): raise asyncio.CancelledError
+                    # One sentence lookahead overlaps the next synthesis with playback.
+                    if index + 1 < len(parts):
+                        self.synthesis = asyncio.create_task(self.synth.synthesize(parts[index + 1], item.cfg, item.cancel))
+                    started = None
                     if first:
-                        self.status(item.id, 'playing', engine, int((time.monotonic() - item.created) * 1000)); first = False
-                    await asyncio.to_thread(self.play, audio, item.cfg.device, item.cfg.preview, item.cfg.volume, item.cancel)
+                        loop = asyncio.get_running_loop()
+                        def notify_started(engine=engine):
+                            elapsed = int((time.monotonic() - item.created) * 1000)
+                            loop.call_soon_threadsafe(self.status, item.id, 'playing', engine, elapsed)
+                        started = notify_started
+                        first = False
+                    await asyncio.to_thread(self.play, audio, item.cfg.device, item.cfg.preview, item.cfg.volume, item.cancel, started)
                 state = 'cancelled' if item.cancel.is_set() else 'done'
                 self.remember(item.id, state); self.status(item.id, state, '', 0)
             except asyncio.CancelledError:
@@ -211,4 +222,7 @@ class SpeechQueue:
             except Exception as exc:
                 self.remember(item.id, 'failed'); self.status(item.id, 'failed', str(exc)[:160], 0)
             finally:
+                if self.synthesis:
+                    self.synthesis.cancel()
+                    await asyncio.gather(self.synthesis, return_exceptions=True)
                 self.current = None; self.synthesis = None; self.queue.task_done()

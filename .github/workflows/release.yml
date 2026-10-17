@@ -56,7 +56,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force third-party-sources | Out-Null
-          python -m pip download --no-deps --no-binary :all: edge-tts==7.3.1 pystray==0.19.5 -d third-party-sources
+          python -m pip download --no-deps --no-binary :all: edge-tts==7.3.1 -d third-party-sources
+          Invoke-WebRequest https://github.com/moses-palmer/pystray/archive/refs/tags/v0.19.5.tar.gz -OutFile third-party-sources/pystray-0.19.5.tar.gz
           Invoke-WebRequest https://www.gnu.org/licenses/gpl-3.0.txt -OutFile desktop/licenses/GPL-3.0.txt
       - run: python -m PyInstaller --clean --noconfirm CloudMic.spec
         working-directory: desktop

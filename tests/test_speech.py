@@ -14,7 +14,9 @@ class FakeSynth:
 @pytest.mark.asyncio
 async def test_queue_order_and_dedup():
     events=[];spoken=[]
-    def play(data,device,preview,volume,cancel):spoken.append(data)
+    def play(data,device,preview,volume,cancel,started):
+        if started:started()
+        spoken.append(data)
     q=SpeechQueue(FakeSynth(),play,lambda *e:events.append(e))
     assert q.enqueue('message-1','第一句。',Settings())
     assert not q.enqueue('message-1','重复消息',Settings())
@@ -45,7 +47,8 @@ async def test_stop_during_synthesis_and_runner_survives():
 @pytest.mark.asyncio
 async def test_stop_during_playback():
     playing=threading.Event();events=[]
-    def play(data,device,preview,volume,cancel):
+    def play(data,device,preview,volume,cancel,started):
+        if started:started()
         playing.set()
         assert cancel.wait(1)
     q=SpeechQueue(FakeSynth(),play,lambda *e:events.append(e))
@@ -86,3 +89,20 @@ def test_split_and_https_validation():
     assert validate_relay('https://example.com/')=='https://example.com'
     for value in ['http://example.com','https://user:pw@example.com','https://example.com/a','https://example.com?key=x']:
         with pytest.raises(ValueError):validate_relay(value)
+
+@pytest.mark.asyncio
+async def test_next_sentence_synthesized_while_first_plays():
+    second_ready=threading.Event();events=[]
+    class Lookahead:
+        async def synthesize(self,text,cfg,cancel):
+            if text=='第二句。':second_ready.set()
+            return b'audio','test voice'
+    def play(data,device,preview,volume,cancel,started):
+        if started:
+            started()
+            assert second_ready.wait(1), 'next sentence was not prefetched'
+    q=SpeechQueue(Lookahead(),play,lambda *e:events.append(e))
+    q.enqueue('prefetch-message','第一句。第二句。',Settings())
+    worker=asyncio.create_task(q.run());await asyncio.wait_for(q.queue.join(),2)
+    assert any(e[1]=='done' for e in events)
+    worker.cancel();await asyncio.gather(worker,return_exceptions=True)

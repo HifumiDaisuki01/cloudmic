@@ -42,20 +42,26 @@ def choose_output(name: str, preview: bool):
     return match
 
 
-def play_audio(data: bytes, device_name: str, preview: bool, volume: float, cancel: threading.Event):
+def play_audio(data: bytes, device_name: str, preview: bool, volume: float, cancel: threading.Event, started=None):
     device = choose_output(device_name, preview)
     # Resample to the actual endpoint format. No numpy or external ffmpeg needed.
+    channels = 1
+    try: sd.check_output_settings(device=device.index, channels=1, dtype='int16', samplerate=device.samplerate)
+    except sd.PortAudioError:
+        channels = 2
+        sd.check_output_settings(device=device.index, channels=2, dtype='int16', samplerate=device.samplerate)
     decoded = miniaudio.decode(data, output_format=miniaudio.SampleFormat.SIGNED16,
-                               nchannels=1, sample_rate=device.samplerate)
+                               nchannels=channels, sample_rate=device.samplerate)
     samples = decoded.samples
     if volume != 1.0:
         for i, sample in enumerate(samples):
             samples[i] = max(-32768, min(32767, int(sample * volume)))
-    chunk = max(1, device.samplerate // 50)  # 20 ms; cancellation stays responsive.
+    chunk = max(1, device.samplerate // 50) * channels  # 20 ms; cancellation stays responsive.
     if cancel.is_set():
         return
     with sd.RawOutputStream(device=device.index, samplerate=device.samplerate,
-                            channels=1, dtype='int16', latency='low') as stream:
+                            channels=channels, dtype='int16', latency='low') as stream:
+        if started: started()
         for start in range(0, len(samples), chunk):
             if cancel.is_set():
                 stream.abort()
